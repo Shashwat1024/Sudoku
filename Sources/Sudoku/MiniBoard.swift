@@ -17,6 +17,11 @@ struct MiniBoard: View {
     var eliminated: [Int: Set<Int>] = [:]
     /// Size of pencil-mark digits relative to the cell.
     var noteScale: CGFloat = 0.26
+    /// Editing support (scan review): tap handler, selection, clashes, shaky reads.
+    var onTap: ((Int) -> Void)?
+    var selected: Int?
+    var conflicts: Set<Int> = []
+    var uncertain: Set<Int> = []
 
     @Environment(\.theme) private var theme
 
@@ -32,6 +37,8 @@ struct MiniBoard: View {
                             ForEach(0..<9, id: \.self) { c in
                                 cellView(r * 9 + c, size: cell)
                                     .frame(width: cell, height: cell)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { onTap?(r * 9 + c) }
                             }
                         }
                     }
@@ -76,6 +83,9 @@ struct MiniBoard: View {
     }
 
     private func background(_ i: Int) -> Color {
+        if conflicts.contains(i) { return Color.red.opacity(0.35) }
+        if i == selected { return theme.accent.opacity(0.35) }
+        if uncertain.contains(i) { return Color.yellow.opacity(0.40) }
         if let heat, puzzle[i] == 0 {
             // sqrt spreads the low end so quick cells are still distinguishable.
             let h = max(0, min(1, heat[i])).squareRoot()

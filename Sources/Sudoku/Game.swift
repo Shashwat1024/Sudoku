@@ -118,6 +118,12 @@ final class Game {
         mode == .daily(DailyPuzzle.todayKey()) && !isComplete && !isGameOver
     }
 
+    /// A puzzle the player scanned or typed in. It must have exactly one solution.
+    func startImported(puzzle: [Int], solution: [Int]) {
+        let level = Solver.rate(puzzle).level
+        startGame(difficulty: level, mode: .classic) { (puzzle, solution) }
+    }
+
     /// Race a recorded run on the same puzzle.
     func startGhostRace(_ setup: GhostSetup) {
         startGame(difficulty: setup.difficulty, mode: .classic, ghost: setup.run) {

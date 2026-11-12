@@ -5,6 +5,7 @@ import SwiftUI
 /// Shown in place on the home screen (no navigation push) so it opens instantly.
 struct NewGameView: View {
     let onStart: (Difficulty, Bool) -> Void
+    let onScan: () -> Void
     let onBack: () -> Void
 
     @State private var zen = false
@@ -42,12 +43,42 @@ struct NewGameView: View {
                     ForEach(Difficulty.allCases) { d in
                         row(d)
                     }
+
+                    scanRow
                 }
                 .padding(.bottom)
             }
             .scrollIndicators(.hidden)
         }
         .padding()
+    }
+
+    /// Import a puzzle from a photo of a printed Sudoku.
+    private var scanRow: some View {
+        Button(action: onScan) {
+            HStack(spacing: 14) {
+                Image(systemName: "camera.viewfinder")
+                    .font(.title2)
+                    .frame(width: 34)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Scan a puzzle").font(.headline)
+                    Text("Photograph a Sudoku from paper or a screen.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.primary)
+            .glassSurface(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 6)
     }
 
     private func row(_ d: Difficulty) -> some View {

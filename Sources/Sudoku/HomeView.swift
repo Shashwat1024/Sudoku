@@ -7,6 +7,7 @@ struct HomeView: View {
     let trainer: TrainerStore
     let onContinue: () -> Void
     let onNewGame: (Difficulty, Bool) -> Void
+    let onScan: () -> Void
     let onDaily: () -> Void
     let onLearn: () -> Void
     let onStats: () -> Void
@@ -19,7 +20,7 @@ struct HomeView: View {
     var body: some View {
         ZStack {
             if showNewGame {
-                NewGameView(onStart: onNewGame) {
+                NewGameView(onStart: onNewGame, onScan: onScan) {
                     withAnimation(.easeInOut(duration: 0.2)) { showNewGame = false }
                 }
                 .transition(.move(edge: .trailing).combined(with: .opacity))

@@ -7,9 +7,11 @@ private enum PendingStart: Equatable {
     case zen(Difficulty)
     case daily
     case ghost(GhostSetup)
+    case imported(puzzle: [Int], solution: [Int])
 
     var title: String {
         switch self {
+        case .imported: return "Play Scanned Puzzle"
         case .level(let d): return "New \(d.rawValue) Game"
         case .zen(let d): return "New Zen \(d.rawValue) Game"
         case .daily: return "Start Today's Puzzle"
@@ -32,6 +34,7 @@ struct ContentView: View {
     @State private var showDaily = false
     @State private var showHistory = false
     @State private var showTrainer = false
+    @State private var showScan = false
     @State private var trainer = TrainerStore()
     @State private var reviewRecord: GameRecord?
 
@@ -52,6 +55,7 @@ struct ContentView: View {
                     trainer: trainer,
                     onContinue: continueGame,
                     onNewGame: { level, zen in request(zen ? .zen(level) : .level(level)) },
+                    onScan: { showScan = true },
                     onDaily: { showDaily = true },
                     onLearn: { showTrainer = true },
                     onStats: { showStats = true },
@@ -89,6 +93,7 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { game.pause() }
         }
+        .onOpenURL { handle($0) }
         .sensoryFeedback(trigger: game.eventID) { _, _ in
             guard haptics else { return nil }
             if game.mode == .zen {
@@ -116,6 +121,11 @@ struct ContentView: View {
             themed(DailyView(game: game) {
                 showDaily = false
                 after(request: .daily)
+            })
+        }
+        .sheet(isPresented: $showScan) {
+            themed(ScanFlowView { puzzle, solution in
+                after(request: .imported(puzzle: puzzle, solution: solution))
             })
         }
         .sheet(isPresented: $showTrainer) {
@@ -152,6 +162,25 @@ struct ContentView: View {
             }
         } message: {
             Text("Your unfinished game will be lost.")
+        }
+    }
+
+    /// Deep links, for Shortcuts ("Open URL") and the widget:
+    /// sudoku://daily, sudoku://new?level=hard, sudoku://zen?level=easy,
+    /// sudoku://continue, sudoku://learn, sudoku://scan
+    private func handle(_ url: URL) {
+        guard url.scheme == "sudoku" else { return }
+        let level = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?.first { $0.name == "level" }?.value
+            .flatMap { Difficulty(rawValue: $0.prefix(1).uppercased() + $0.dropFirst().lowercased()) }
+        switch url.host {
+        case "daily": request(.daily)
+        case "new": request(.level(level ?? .medium))
+        case "zen": request(.zen(level ?? .easy))
+        case "continue": if game.hasUnfinishedGame { continueGame() }
+        case "learn": showTrainer = true
+        case "scan": showScan = true
+        default: break
         }
     }
 
@@ -205,6 +234,7 @@ struct ContentView: View {
         case .zen(let d): game.newGame(d, mode: .zen)
         case .daily: game.startDaily()
         case .ghost(let setup): game.startGhostRace(setup)
+        case .imported(let puzzle, let solution): game.startImported(puzzle: puzzle, solution: solution)
         }
         show(.game)
     }
