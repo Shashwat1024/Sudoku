@@ -76,18 +76,28 @@ public enum Technique: Int, CaseIterable, Codable, Comparable, Sendable {
     }
 }
 
-public struct Placement: Equatable, Sendable {
+public struct Placement: Codable, Equatable, Sendable {
     public var cell: Int
     public var digit: Int
+
+    public init(cell: Int, digit: Int) {
+        self.cell = cell
+        self.digit = digit
+    }
 }
 
-public struct Elimination: Equatable, Sendable {
+public struct Elimination: Codable, Equatable, Sendable {
     public var cell: Int
     public var digit: Int
+
+    public init(cell: Int, digit: Int) {
+        self.cell = cell
+        self.digit = digit
+    }
 }
 
 /// One logical deduction: either a digit to place or candidates to remove.
-public struct Step: Equatable, Sendable {
+public struct Step: Codable, Equatable, Sendable {
     public var technique: Technique
     public var placement: Placement?
     public var eliminations: [Elimination]
@@ -150,6 +160,12 @@ public struct Solver: Sendable {
         for i in 0..<81 where puzzle[i] != 0 {
             for p in Grid.peers[i] { cands[p] &= ~Self.bit(puzzle[i]) }
         }
+    }
+
+    /// Restores a solver from a saved position (placed digits plus candidate masks).
+    public init(values: [Int], cands: [UInt16]) {
+        self.values = values
+        self.cands = cands
     }
 
     public var isSolved: Bool { !values.contains(0) }

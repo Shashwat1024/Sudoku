@@ -4,9 +4,11 @@ import SwiftUI
 /// Landing screen: continue the unfinished game, start a new one, or play the daily puzzle.
 struct HomeView: View {
     let game: Game
+    let trainer: TrainerStore
     let onContinue: () -> Void
     let onNewGame: (Difficulty, Bool) -> Void
     let onDaily: () -> Void
+    let onLearn: () -> Void
     let onStats: () -> Void
     let onHistory: () -> Void
     let onSettings: () -> Void
@@ -35,6 +37,7 @@ struct HomeView: View {
             if game.hasUnfinishedGame { continueCard }
             newGameCard
             dailyCard
+            learnCard
             Spacer(minLength: 0)
             bottomBar
         }
@@ -46,7 +49,7 @@ struct HomeView: View {
     private var header: some View {
         VStack(spacing: 6) {
             Image(systemName: "square.grid.3x3.fill")
-                .font(.system(size: 44))
+                .font(.system(size: 36))
                 .foregroundStyle(theme.accent)
             Text("Sudoku")
                 .font(.system(size: 40, weight: .bold, design: .rounded))
@@ -54,7 +57,7 @@ struct HomeView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
-        .padding(.top, 24)
+        .padding(.top, 12)
     }
 
     private var continueCard: some View {
@@ -130,6 +133,32 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Daily Puzzle").font(.headline)
                     Text(done ? "Completed · \(streak)-day streak" : "Today: \(level.rawValue)\(streak > 0 ? " · \(streak)-day streak" : "")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.primary)
+            .glassSurface(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var learnCard: some View {
+        let total = Technique.allCases.count
+        return Button(action: onLearn) {
+            HStack(spacing: 14) {
+                Image(systemName: "graduationcap.fill")
+                    .font(.title)
+                    .foregroundStyle(Color.purple)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Learn Techniques").font(.headline)
+                    Text("\(trainer.mastered) of \(total) mastered · lessons and quizzes")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

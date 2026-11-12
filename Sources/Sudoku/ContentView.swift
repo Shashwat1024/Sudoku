@@ -31,6 +31,8 @@ struct ContentView: View {
     @State private var showStats = false
     @State private var showDaily = false
     @State private var showHistory = false
+    @State private var showTrainer = false
+    @State private var trainer = TrainerStore()
     @State private var reviewRecord: GameRecord?
 
     @Environment(\.scenePhase) private var scenePhase
@@ -47,9 +49,11 @@ struct ContentView: View {
             case .home:
                 HomeView(
                     game: game,
+                    trainer: trainer,
                     onContinue: continueGame,
                     onNewGame: { level, zen in request(zen ? .zen(level) : .level(level)) },
                     onDaily: { showDaily = true },
+                    onLearn: { showTrainer = true },
                     onStats: { showStats = true },
                     onHistory: { showHistory = true },
                     onSettings: { showSettings = true }
@@ -113,6 +117,9 @@ struct ContentView: View {
                 showDaily = false
                 after(request: .daily)
             })
+        }
+        .sheet(isPresented: $showTrainer) {
+            themed(TrainerView(store: trainer))
         }
         .sheet(isPresented: $showHistory) {
             themed(HistoryView(store: game.gameHistory) { setup in

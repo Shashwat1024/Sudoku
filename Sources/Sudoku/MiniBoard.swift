@@ -9,6 +9,14 @@ struct MiniBoard: View {
     var highlight: Int?
     /// Per-cell heat 0...1; when set, cells are tinted by it.
     var heat: [Double]?
+    /// Cells forming a highlighted pattern (technique examples and quizzes).
+    var patternCells: Set<Int> = []
+    /// The cell a deduction would fill, shown stronger than the pattern.
+    var target: Int?
+    /// Candidates to show struck out in red, per cell.
+    var eliminated: [Int: Set<Int>] = [:]
+    /// Size of pencil-mark digits relative to the cell.
+    var noteScale: CGFloat = 0.26
 
     @Environment(\.theme) private var theme
 
@@ -54,9 +62,10 @@ struct MiniBoard: View {
                         HStack(spacing: 0) {
                             ForEach(0..<3, id: \.self) { c in
                                 let d = r * 3 + c + 1
+                                let gone = eliminated[i]?.contains(d) ?? false
                                 Text(n.contains(d) ? "\(d)" : " ")
-                                    .font(.system(size: size * 0.26))
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: size * noteScale, weight: gone ? .bold : .regular))
+                                    .foregroundStyle(gone ? Color.red : Color.secondary)
                                     .frame(width: size / 3, height: size / 3)
                             }
                         }
@@ -67,9 +76,13 @@ struct MiniBoard: View {
     }
 
     private func background(_ i: Int) -> Color {
-        guard let heat, puzzle[i] == 0 else { return .clear }
-        // sqrt spreads the low end so quick cells are still distinguishable.
-        let h = max(0, min(1, heat[i])).squareRoot()
-        return theme.accent.opacity(0.06 + 0.74 * h)
+        if let heat, puzzle[i] == 0 {
+            // sqrt spreads the low end so quick cells are still distinguishable.
+            let h = max(0, min(1, heat[i])).squareRoot()
+            return theme.accent.opacity(0.06 + 0.74 * h)
+        }
+        if i == target { return Color.orange.opacity(0.50) }
+        if patternCells.contains(i) { return Color.orange.opacity(0.25) }
+        return .clear
     }
 }

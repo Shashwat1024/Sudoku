@@ -14,6 +14,8 @@ let package = Package(
     ],
     targets: [
         .target(name: "SudokuCore"),
+        // Developer tool: builds the technique trainer's bundled practice pool.
+        .executableTarget(name: "PoolGen", dependencies: ["SudokuCore"]),
         .testTarget(name: "SudokuCoreTests", dependencies: ["SudokuCore"]),
     ]
 )
