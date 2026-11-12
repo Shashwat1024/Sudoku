@@ -60,6 +60,10 @@ xtool dev run -c release
 
 Release mode matters: puzzle generation is much faster when optimized.
 
+## License
+
+MIT. See [LICENSE](LICENSE).
+
 ## Notes
 
 - Apps signed with a free Apple ID expire after 7 days and need reinstalling.
