@@ -1,0 +1,3 @@
+version: 1
+bundleID: com.example.Sudoku
+iconPath: Resources/AppIcon.png

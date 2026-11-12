@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# SwiftPM / build output (anywhere in the tree, including Core/)
+.build/
+.swiftpm/
+/Packages
+xcuserdata/
+DerivedData/
+
+# xtool: build output, signed app bundle and tooling state (machine-specific)
+/xtool/
+.bsp/
+
+# Never commit credentials, signing material or local environment files
+.netrc
+.env
+.env.*
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.p8
+*.cer
+*.pem
+*.key
