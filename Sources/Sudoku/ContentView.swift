@@ -6,12 +6,14 @@ private enum PendingStart: Equatable {
     case level(Difficulty)
     case zen(Difficulty)
     case daily
+    case ghost(GhostSetup)
 
     var title: String {
         switch self {
         case .level(let d): return "New \(d.rawValue) Game"
         case .zen(let d): return "New Zen \(d.rawValue) Game"
         case .daily: return "Start Today's Puzzle"
+        case .ghost: return "Race the Ghost"
         }
     }
 }
@@ -28,12 +30,13 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showStats = false
     @State private var showDaily = false
+    @State private var showHistory = false
+    @State private var reviewRecord: GameRecord?
 
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage(Pref.haptics) private var haptics = true
     @AppStorage(Pref.theme) private var themeName = Theme.classic.id
-    @AppStorage(Pref.glass) private var glassEnabled = true
 
     private var theme: Theme { Theme.named(themeName) }
     private var isZen: Bool { game.mode == .zen && screen == .game }
@@ -48,6 +51,7 @@ struct ContentView: View {
                     onNewGame: { level, zen in request(zen ? .zen(level) : .level(level)) },
                     onDaily: { showDaily = true },
                     onStats: { showStats = true },
+                    onHistory: { showHistory = true },
                     onSettings: { showSettings = true }
                 )
                 .transition(.opacity)
@@ -55,20 +59,27 @@ struct ContentView: View {
                 GameScreen(
                     game: game,
                     onHome: { goHome() },
-                    onSettings: { showSettings = true }
+                    onSettings: { showSettings = true },
+                    onReview: { record in
+                        // Let the alert finish dismissing before the sheet appears.
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(350))
+                            reviewRecord = record
+                        }
+                    }
                 )
                 .transition(.opacity)
             }
         }
-        .background { AmbientBackground(theme: theme, glass: glassEnabled, zen: isZen) }
+        .background { AmbientBackground(theme: theme, zen: isZen) }
         .environment(\.theme, theme)
-        .environment(\.glassEnabled, glassEnabled)
         .tint(theme.accent)
         .preferredColorScheme(theme.scheme)
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
-                game.tick()
+                // Game time only runs on the board, never on the home screen.
+                if screen == .game { game.tick() }
             }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -92,24 +103,34 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView().tint(theme.accent).preferredColorScheme(theme.scheme)
+            themed(SettingsView())
         }
         .sheet(isPresented: $showStats) {
-            StatsView(stats: game.stats).tint(theme.accent).preferredColorScheme(theme.scheme)
+            themed(StatsView(stats: game.stats))
         }
         .sheet(isPresented: $showDaily) {
-            DailyView(game: game) {
+            themed(DailyView(game: game) {
                 showDaily = false
-                // Let the sheet finish dismissing before a confirmation dialog appears.
-                Task {
-                    try? await Task.sleep(for: .milliseconds(400))
-                    request(.daily)
+                after(request: .daily)
+            })
+        }
+        .sheet(isPresented: $showHistory) {
+            themed(HistoryView(store: game.gameHistory) { setup in
+                after(request: .ghost(setup))
+            })
+        }
+        .sheet(item: $reviewRecord) { record in
+            themed(NavigationStack {
+                ReplayView(record: record) { setup in
+                    reviewRecord = nil
+                    after(request: .ghost(setup))
                 }
-            }
-            .environment(\.theme, theme)
-            .environment(\.glassEnabled, glassEnabled)
-            .tint(theme.accent)
-            .preferredColorScheme(theme.scheme)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { reviewRecord = nil }
+                    }
+                }
+            })
         }
         .confirmationDialog(
             pending?.title ?? "Start a new game?",
@@ -124,6 +145,23 @@ struct ContentView: View {
             }
         } message: {
             Text("Your unfinished game will be lost.")
+        }
+    }
+
+    /// Applies the current theme to a sheet's content.
+    private func themed<V: View>(_ view: V) -> some View {
+        view
+            .environment(\.theme, theme)
+            .tint(theme.accent)
+            .preferredColorScheme(theme.scheme)
+            .background { AmbientBackground(theme: theme) }
+    }
+
+    /// Runs a start request after a sheet has finished dismissing.
+    private func after(request p: PendingStart) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            request(p)
         }
     }
 
@@ -159,6 +197,7 @@ struct ContentView: View {
         case .level(let d): game.newGame(d)
         case .zen(let d): game.newGame(d, mode: .zen)
         case .daily: game.startDaily()
+        case .ghost(let setup): game.startGhostRace(setup)
         }
         show(.game)
     }

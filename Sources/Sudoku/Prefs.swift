@@ -10,7 +10,6 @@ enum Pref {
     static let autoNotes = "pref.autoRemoveNotes"
     static let mistakeLimit = "pref.mistakeLimit"
     static let theme = "pref.theme"
-    static let glass = "pref.glass"
 
     static func bool(_ key: String, _ fallback: Bool) -> Bool {
         UserDefaults.standard.object(forKey: key) as? Bool ?? fallback

@@ -11,7 +11,6 @@ struct SettingsView: View {
     @AppStorage(Pref.autoNotes) private var autoNotes = true
     @AppStorage(Pref.mistakeLimit) private var mistakeLimit = 0
     @AppStorage(Pref.theme) private var themeName = Theme.classic.id
-    @AppStorage(Pref.glass) private var glass = true
 
     var body: some View {
         NavigationStack {
@@ -34,14 +33,6 @@ struct SettingsView: View {
                     Text("Gameplay")
                 } footer: {
                     Text("With a mistake limit, the game ends when you reach it. You can retry the same puzzle.")
-                }
-
-                Section {
-                    Toggle("Liquid Glass", isOn: $glass)
-                } header: {
-                    Text("Style")
-                } footer: {
-                    Text("Translucent glass controls over a soft colour glow. Turn off for flat controls.")
                 }
 
                 Section("Theme") {

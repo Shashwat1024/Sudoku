@@ -37,6 +37,9 @@ final class ZenTones {
 
     func play(digit: Int) {
         guard (1...9).contains(digit), startIfNeeded(), let fmt = format else { return }
+        // An audio interruption (phone call, Siri) stops the engine; bring it back.
+        if !engine.isRunning { try? engine.start() }
+        guard engine.isRunning else { return }
         let freq = Self.scale[digit - 1]
         let frames = AVAudioFrameCount(Self.sampleRate * 1.2)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: frames),

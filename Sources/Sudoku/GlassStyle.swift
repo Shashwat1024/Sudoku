@@ -1,48 +1,20 @@
 import SwiftUI
 
-private struct GlassEnabledKey: EnvironmentKey {
-    static let defaultValue = true
-}
-
-extension EnvironmentValues {
-    /// Whether controls use Liquid Glass (user setting). Off falls back to flat tinted fills.
-    var glassEnabled: Bool {
-        get { self[GlassEnabledKey.self] }
-        set { self[GlassEnabledKey.self] = newValue }
-    }
-}
-
 extension View {
-    /// Draws the view on a Liquid Glass surface of the given shape, or a flat
-    /// tinted fill when glass is switched off in settings.
+    /// Draws the view on a Liquid Glass surface of the given shape.
     func glassSurface<S: Shape>(
         _ shape: S, tint: Color? = nil, interactive: Bool = true
     ) -> some View {
-        modifier(GlassSurface(shape: shape, tint: tint, interactive: interactive))
-    }
-}
-
-private struct GlassSurface<S: Shape>: ViewModifier {
-    let shape: S
-    let tint: Color?
-    let interactive: Bool
-
-    @Environment(\.glassEnabled) private var enabled
-    @Environment(\.theme) private var theme
-
-    func body(content: Content) -> some View {
-        if enabled {
-            content.glassEffect(Glass.regular.tint(tint).interactive(interactive), in: shape)
-        } else {
-            content.background((tint ?? theme.accent).opacity(tint == nil ? 0.12 : 0.30), in: shape)
-        }
+        // contentShape makes the whole surface tappable, including transparent gaps
+        // (e.g. the Spacer between a label and its chevron).
+        contentShape(shape)
+            .glassEffect(Glass.regular.tint(tint).interactive(interactive), in: shape)
     }
 }
 
 /// Soft colour behind the screen so glass has something to refract.
 struct AmbientBackground: View {
     let theme: Theme
-    let glass: Bool
     /// Zen mode: add a slow time-of-day sky gradient.
     var zen = false
 
@@ -73,18 +45,16 @@ struct AmbientBackground: View {
                     )
                 }
             }
-            if glass {
-                Circle()
-                    .fill(theme.accent.opacity(0.35))
-                    .frame(width: 320, height: 320)
-                    .blur(radius: 90)
-                    .offset(x: -140, y: -260)
-                Circle()
-                    .fill(theme.accent.opacity(0.22))
-                    .frame(width: 360, height: 360)
-                    .blur(radius: 100)
-                    .offset(x: 160, y: 300)
-            }
+            Circle()
+                .fill(theme.accent.opacity(0.35))
+                .frame(width: 320, height: 320)
+                .blur(radius: 90)
+                .offset(x: -140, y: -260)
+            Circle()
+                .fill(theme.accent.opacity(0.22))
+                .frame(width: 360, height: 360)
+                .blur(radius: 100)
+                .offset(x: 160, y: 300)
         }
         .clipped()
         .ignoresSafeArea()

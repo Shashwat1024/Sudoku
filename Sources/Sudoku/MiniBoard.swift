@@ -1,0 +1,75 @@
+import SwiftUI
+
+/// A read-only board for replays and heatmaps (not tied to a live `Game`).
+struct MiniBoard: View {
+    let puzzle: [Int]
+    let values: [Int]
+    var notes: [Set<Int>]?
+    /// Cell to outline (e.g. the move just made).
+    var highlight: Int?
+    /// Per-cell heat 0...1; when set, cells are tinted by it.
+    var heat: [Double]?
+
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            let cell = side / 9
+            ZStack(alignment: .topLeading) {
+                Rectangle().fill(theme.board)
+                VStack(spacing: 0) {
+                    ForEach(0..<9, id: \.self) { r in
+                        HStack(spacing: 0) {
+                            ForEach(0..<9, id: \.self) { c in
+                                cellView(r * 9 + c, size: cell)
+                                    .frame(width: cell, height: cell)
+                            }
+                        }
+                    }
+                }
+                GridLines(thick: false).stroke(theme.line, lineWidth: 0.5)
+                GridLines(thick: true).stroke(theme.lineThick, lineWidth: 2)
+            }
+            .frame(width: side, height: side)
+        }
+        .aspectRatio(1, contentMode: .fit)
+    }
+
+    private func cellView(_ i: Int, size: CGFloat) -> some View {
+        let value = values[i]
+        let given = puzzle[i] != 0
+        return ZStack {
+            Rectangle().fill(background(i))
+            if i == highlight {
+                Rectangle().strokeBorder(theme.accent, lineWidth: 2)
+            }
+            if value != 0 {
+                Text("\(value)")
+                    .font(.system(size: size * 0.52, weight: given ? .medium : .regular))
+                    .foregroundStyle(given ? theme.given : theme.accent)
+            } else if let n = notes?[i], !n.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(0..<3, id: \.self) { r in
+                        HStack(spacing: 0) {
+                            ForEach(0..<3, id: \.self) { c in
+                                let d = r * 3 + c + 1
+                                Text(n.contains(d) ? "\(d)" : " ")
+                                    .font(.system(size: size * 0.26))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: size / 3, height: size / 3)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func background(_ i: Int) -> Color {
+        guard let heat, puzzle[i] == 0 else { return .clear }
+        // sqrt spreads the low end so quick cells are still distinguishable.
+        let h = max(0, min(1, heat[i])).squareRoot()
+        return theme.accent.opacity(0.06 + 0.74 * h)
+    }
+}

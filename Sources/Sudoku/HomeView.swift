@@ -8,28 +8,37 @@ struct HomeView: View {
     let onNewGame: (Difficulty, Bool) -> Void
     let onDaily: () -> Void
     let onStats: () -> Void
+    let onHistory: () -> Void
     let onSettings: () -> Void
 
     @Environment(\.theme) private var theme
     @State private var showNewGame = false
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                header
-                Spacer(minLength: 0)
-                if game.isInProgress { continueCard }
-                newGameCard
-                dailyCard
-                Spacer(minLength: 0)
-                bottomBar
-            }
-            .padding()
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(isPresented: $showNewGame) {
-                NewGameView(onStart: onNewGame)
+        ZStack {
+            if showNewGame {
+                NewGameView(onStart: onNewGame) {
+                    withAnimation(.easeInOut(duration: 0.2)) { showNewGame = false }
+                }
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                menu
+                    .transition(.move(edge: .leading).combined(with: .opacity))
             }
         }
+    }
+
+    private var menu: some View {
+        VStack(spacing: 16) {
+            header
+            Spacer(minLength: 0)
+            if game.hasUnfinishedGame { continueCard }
+            newGameCard
+            dailyCard
+            Spacer(minLength: 0)
+            bottomBar
+        }
+        .padding()
     }
 
     // MARK: Pieces
@@ -82,7 +91,9 @@ struct HomeView: View {
     }
 
     private var newGameCard: some View {
-        Button { showNewGame = true } label: {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) { showNewGame = true }
+        } label: {
             HStack(spacing: 14) {
                 Image(systemName: "plus.circle.fill")
                     .font(.title)
@@ -138,7 +149,8 @@ struct HomeView: View {
     private var bottomBar: some View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
-                pill("Statistics", "chart.bar", action: onStats)
+                pill("Stats", "chart.bar", action: onStats)
+                pill("History", "clock.arrow.circlepath", action: onHistory)
                 pill("Settings", "gearshape", action: onSettings)
             }
         }
@@ -148,7 +160,8 @@ struct HomeView: View {
     private func pill(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon)
-                .font(.subheadline.weight(.medium))
+                .font(.footnote.weight(.medium))
+                .labelStyle(.titleAndIcon)
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
                 .foregroundStyle(.primary)

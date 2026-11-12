@@ -17,9 +17,14 @@ required on the development machine.
   with a streak and a month calendar.
 - **Zen mode.** No timer, no mistake pressure, nothing recorded; a time-of-day sky
   background and optional soft bell tones.
+- **Replay and heatmap.** Every game records its moves. Replay a finished game with
+  a scrubber and speed control, or see a heatmap of where you spent the most time.
+- **Ghost races.** Race your earlier run on the same puzzle, or paste a run code
+  shared by someone else (plain text, no server).
 - Notes, undo, pause, mistake limit, statistics, seven colour themes.
-- **Liquid Glass** controls (iOS 26+), switchable in Settings.
-- Home screen to continue an unfinished game or start a new one.
+- **Liquid Glass** controls and a soft colour glow (iOS 26+).
+- Home screen to continue an unfinished game, start a new one from all six levels,
+  open the daily puzzle, or browse history.
 
 ## Structure
 

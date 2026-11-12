@@ -15,6 +15,7 @@ private struct SavedGame: Codable {
     var gameOver: Bool?
     var moves: [Move]?
     var mode: GameMode?
+    var ghost: GhostRun?
 }
 
 /// How the current game was started.
@@ -40,6 +41,7 @@ final class Game {
 
     let stats = Stats()
     let daily = DailyStore()
+    let gameHistory = HistoryStore()
 
     var mode: GameMode = .classic
     var difficulty: Difficulty = .easy
@@ -58,6 +60,14 @@ final class Game {
     var isGenerating = false
     var lastWinWasBest = false
     var hintInfo: HintInfo?
+    /// A recorded run racing alongside this game, if any.
+    var ghost: GhostRun?
+    /// Result line for a finished race ("You beat ... by 0:12").
+    var ghostResult: String?
+    /// The record of the game that just ended (for "Review").
+    var lastRecord: GameRecord?
+    /// The player has seen the result alert for the finished game.
+    var resultAcknowledged = false
 
     /// Every action this game, in order. Feeds replay, heatmap and ghost features.
     private(set) var moves: [Move] = []
@@ -70,8 +80,19 @@ final class Game {
     private var generationID = 0
     private let saveKey = "sudoku.savedGame"
 
+    /// False until a game has been loaded or started. There is deliberately no
+    /// hidden game at launch: that would show a phantom "Continue" and inflate stats.
+    private(set) var hasGame = false
+
     init() {
-        if !load() { newGame(.easy) }
+        hasGame = load()
+    }
+
+    /// Called when the result alert is dismissed. Ignored if a new game or retry has
+    /// already cleared the finished state (SwiftUI runs the dismiss handler after the
+    /// button action, which would otherwise mark the *new* game's result as seen).
+    func acknowledgeResult() {
+        if isComplete || isGameOver { resultAcknowledged = true }
     }
 
     // MARK: - Lifecycle
@@ -97,9 +118,16 @@ final class Game {
         mode == .daily(DailyPuzzle.todayKey()) && !isComplete && !isGameOver
     }
 
+    /// Race a recorded run on the same puzzle.
+    func startGhostRace(_ setup: GhostSetup) {
+        startGame(difficulty: setup.difficulty, mode: .classic, ghost: setup.run) {
+            (setup.puzzle, setup.solution)
+        }
+    }
+
     /// Generates off the main thread, then swaps the new puzzle in.
     private func startGame(
-        difficulty: Difficulty, mode: GameMode,
+        difficulty: Difficulty, mode: GameMode, ghost: GhostRun? = nil,
         generate: @escaping @Sendable () -> (puzzle: [Int], solution: [Int])
     ) {
         // Abandoning a tracked game (not Zen) resets the win streak.
@@ -123,6 +151,8 @@ final class Game {
             puzzle = generated.puzzle
             solution = generated.solution
             resetProgress()
+            self.ghost = ghost
+            hasGame = true
             isGenerating = false
             if tracksStats { stats.recordStart(difficulty) }
             save()
@@ -151,6 +181,9 @@ final class Game {
         isGameOver = false
         isPaused = false
         lastWinWasBest = false
+        ghostResult = nil
+        lastRecord = nil
+        resultAcknowledged = false
         hintInfo = nil
         history = []
         moves = []
@@ -171,8 +204,21 @@ final class Game {
 
     // MARK: - Queries
 
+    /// Played at least one move and not finished: abandoning it loses progress.
     var isInProgress: Bool {
         !isGenerating && !isComplete && !isGameOver && values != puzzle
+    }
+
+    /// A game exists that can be resumed, even if no digit has been placed yet.
+    var hasUnfinishedGame: Bool {
+        hasGame && !isGenerating && !isComplete && !isGameOver
+    }
+
+    /// How far the racing ghost has got at the current game time (0...1).
+    var ghostProgress: Double? {
+        guard let g = ghost else { return nil }
+        let s = Replay.state(puzzle: puzzle, moves: g.moves, atTime: seconds)
+        return Completion.fraction(values: s.values, puzzle: puzzle, solution: solution)
     }
     var canPlay: Bool { !isComplete && !isGameOver && !isPaused && !isGenerating }
     var canUndo: Bool { canPlay && !history.isEmpty }
@@ -366,12 +412,35 @@ final class Game {
             if case .daily(let key) = mode, key == DailyPuzzle.todayKey() {
                 daily.record(key: key, seconds: seconds, hints: hintsUsed, mistakes: mistakes)
             }
+            if let g = ghost { ghostResult = raceResult(against: g) }
+            recordHistory(completed: true)
             fire(.complete)
         } else if mistakeLimit > 0 && mistakes >= mistakeLimit {
             isGameOver = true
             if tracksStats { stats.recordLoss() }
+            recordHistory(completed: false)
             fire(.over)
         }
+    }
+
+    private func recordHistory(completed: Bool) {
+        let record = GameRecord(
+            date: Date(), difficulty: difficulty, mode: mode,
+            puzzle: puzzle, solution: solution, moves: moves,
+            seconds: seconds, mistakes: mistakes, hints: hintsUsed, completed: completed
+        )
+        lastRecord = record
+        gameHistory.add(record)
+    }
+
+    private func raceResult(against g: GhostRun) -> String {
+        let diff = g.seconds - seconds
+        if diff > 0 { return "You beat \(g.title) by \(formatTime(diff))." }
+        if diff < 0 {
+            let name = g.title.prefix(1).uppercased() + String(g.title.dropFirst())
+            return "\(name) won by \(formatTime(-diff))."
+        }
+        return "Dead heat with \(g.title)."
     }
 
     private func fire(_ event: GameEvent, digit: Int? = nil) {
@@ -401,7 +470,8 @@ final class Game {
             difficulty: difficulty, puzzle: puzzle, solution: solution,
             values: values, notes: notes.map { Array($0) },
             mistakes: mistakes, seconds: seconds,
-            hintsUsed: hintsUsed, gameOver: isGameOver, moves: moves, mode: mode
+            hintsUsed: hintsUsed, gameOver: isGameOver, moves: moves, mode: mode,
+            ghost: ghost
         )
         if let data = try? JSONEncoder().encode(saved) {
             UserDefaults.standard.set(data, forKey: saveKey)
@@ -426,6 +496,7 @@ final class Game {
         isGameOver = s.gameOver ?? false
         moves = s.moves ?? []
         mode = s.mode ?? .classic
+        ghost = s.ghost
         return true
     }
 }

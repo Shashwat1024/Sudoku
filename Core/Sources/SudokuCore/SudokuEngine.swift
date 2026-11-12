@@ -91,7 +91,7 @@ public enum SudokuEngine {
     ) -> (puzzle: [Int], solution: [Int]) {
         var best: (puzzle: [Int], solution: [Int], distance: Int)?
 
-        for _ in 0..<maxAttempts {
+        for _ in 0..<max(1, maxAttempts) {
             var solution = [Int](repeating: 0, count: 81)
             _ = fill(&solution, using: &rng)
 
@@ -123,6 +123,38 @@ public enum SudokuEngine {
             }
         }
         return (best!.puzzle, best!.solution)
+    }
+
+    /// Solves a puzzle, or returns nil if it has conflicting givens or no solution.
+    /// (If several solutions exist, one of them is returned.)
+    public static func solve(_ puzzle: [Int]) -> [Int]? {
+        guard puzzle.count == 81 else { return nil }
+        for i in 0..<81 where puzzle[i] != 0 {
+            for p in Grid.peers[i] where puzzle[p] == puzzle[i] { return nil }
+        }
+        var g = puzzle
+        return solveInPlace(&g) ? g : nil
+    }
+
+    private static func solveInPlace(_ g: inout [Int]) -> Bool {
+        var best = -1
+        var bestCands: [Int] = []
+        for i in 0..<81 where g[i] == 0 {
+            let c = candidates(g, i)
+            if c.isEmpty { return false }
+            if best == -1 || c.count < bestCands.count {
+                best = i
+                bestCands = c
+                if c.count == 1 { break }
+            }
+        }
+        if best == -1 { return true }
+        for v in bestCands {
+            g[best] = v
+            if solveInPlace(&g) { return true }
+        }
+        g[best] = 0
+        return false
     }
 
     /// Random (non-reproducible) puzzle.
